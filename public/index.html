@@ -22,12 +22,11 @@ body {
   padding: 30px;
   border-radius: 12px;
   width: 350px;
-  box-shadow: 0 0 20px rgba(255,0,0,0.3);
+  box-shadow: 0 0 25px rgba(255,0,0,0.3);
+  text-align: center;
 }
 
 h2 {
-  text-align: center;
-  margin-bottom: 20px;
   color: #ff0000;
 }
 
@@ -41,10 +40,6 @@ input {
   color: white;
 }
 
-input:focus {
-  outline: 2px solid #ff0000;
-}
-
 button {
   width: 100%;
   padding: 12px;
@@ -54,6 +49,7 @@ button {
   color: white;
   font-weight: bold;
   cursor: pointer;
+  margin-top: 10px;
   transition: 0.3s;
 }
 
@@ -61,9 +57,8 @@ button:hover {
   background: #cc0000;
 }
 
-#pagamento {
+#pagamento, #sucesso {
   display: none;
-  text-align: center;
 }
 
 textarea {
@@ -76,36 +71,62 @@ textarea {
   padding: 8px;
 }
 
-.status {
-  margin-top: 10px;
-  color: #ff4444;
+.copy-btn {
+  background: #444;
+}
+
+.copy-btn:hover {
+  background: #666;
+}
+
+.check {
+  font-size: 80px;
+  color: #00ff66;
+  animation: pop 0.5s ease-in-out;
+}
+
+@keyframes pop {
+  0% { transform: scale(0.5); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
 }
 </style>
 </head>
 <body>
 
 <div class="container">
-  <h2>KSPay</h2>
 
-  <form id="form">
-    <input type="text" placeholder="Nome" id="nome" required>
-    <input type="text" placeholder="WhatsApp" id="whatsapp" required>
-    <input type="text" placeholder="Marca do aparelho" id="aparelho" required>
-    <input type="text" placeholder="Serviço contratado" id="servico" required>
-    <input type="email" placeholder="Email" id="email" required>
-    <input type="number" placeholder="Valor (R$)" id="valor" required>
+  <div id="formulario">
+    <h2>KSPay</h2>
 
-    <button type="submit">Gerar Pix</button>
-  </form>
+    <form id="form">
+      <input type="text" placeholder="Nome" id="nome" required>
+      <input type="text" placeholder="WhatsApp" id="whatsapp" required>
+      <input type="text" placeholder="Marca do aparelho" id="aparelho" required>
+      <input type="text" placeholder="Serviço contratado" id="servico" required>
+      <input type="email" placeholder="Email" id="email" required>
+      <input type="number" placeholder="Valor (R$)" id="valor" required>
+      <button type="submit">Gerar Pix</button>
+    </form>
+  </div>
 
   <div id="pagamento">
     <h3>Escaneie o QR Code</h3>
     <img id="qr" width="200"><br>
-    <textarea id="pixCode" rows="4"></textarea>
-    <p class="status" id="status">
-      Aguarde enquanto o pagamento está sendo aprovado...
+
+    <textarea id="pixCode" rows="4" readonly></textarea>
+    <button class="copy-btn" onclick="copiarPix()">Copiar Pix</button>
+
+    <p id="status">
+      Aguardando pagamento...
     </p>
   </div>
+
+  <div id="sucesso">
+    <div class="check">✔</div>
+    <h3>Pagamento Aprovado!</h3>
+    <p>Redirecionando para atendimento...</p>
+  </div>
+
 </div>
 
 <script>
@@ -129,7 +150,7 @@ document.getElementById("form").addEventListener("submit", async function(e){
 
   const pagamento = await resposta.json();
 
-  document.getElementById("form").style.display = "none";
+  document.getElementById("formulario").style.display = "none";
   document.getElementById("pagamento").style.display = "block";
 
   document.getElementById("qr").src =
@@ -140,6 +161,13 @@ document.getElementById("form").addEventListener("submit", async function(e){
   verificarStatus(pagamento.id);
 });
 
+function copiarPix() {
+  const pix = document.getElementById("pixCode");
+  pix.select();
+  document.execCommand("copy");
+  alert("Pix copiado com sucesso!");
+}
+
 async function verificarStatus(id) {
   const intervalo = setInterval(async () => {
     const res = await fetch("/status/" + id);
@@ -147,13 +175,14 @@ async function verificarStatus(id) {
 
     if (data.status === "approved") {
       clearInterval(intervalo);
-      document.getElementById("status").innerText =
-        "Pagamento aprovado! Redirecionando...";
+
+      document.getElementById("pagamento").style.display = "none";
+      document.getElementById("sucesso").style.display = "block";
 
       setTimeout(() => {
         window.location.href =
           "https://wa.me/5586994948442";
-      }, 3000);
+      }, 4000);
     }
   }, 5000);
 }
