@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>KSPay</title>
+<title>UnlockHub</title>
 
 <style>
 body {
-  background-color: #0d0d0d;
+  background-color: #000;
   font-family: Arial, sans-serif;
   display: flex;
   justify-content: center;
@@ -17,26 +17,59 @@ body {
   color: white;
 }
 
+/* Container principal */
 .container {
-  background: #1a1a1a;
-  padding: 30px;
-  border-radius: 12px;
-  width: 350px;
-  box-shadow: 0 0 25px rgba(255,0,0,0.3);
+  background: #111;
+  padding: 35px;
+  border-radius: 20px;
+  width: 380px;
   text-align: center;
+  position: relative;
+  box-shadow: 0 0 25px rgba(255,0,0,0.4);
 }
 
-h2 {
-  color: #ff0000;
+/* Logo */
+.logo {
+  width: 200px;
+  margin-bottom: 20px;
+  filter: drop-shadow(0 0 15px red);
 }
 
+/* Instagram botão neon */
+.instagram-btn {
+  position: absolute;
+  top: -25px;
+  right: -25px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: black;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: 3px solid red;
+  box-shadow: 0 0 15px red, 0 0 30px red;
+  transition: 0.3s;
+  text-decoration: none;
+}
+
+.instagram-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 25px red, 0 0 50px red;
+}
+
+.instagram-btn img {
+  width: 30px;
+}
+
+/* Inputs */
 input {
   width: 100%;
   padding: 10px;
   margin-bottom: 12px;
   border: none;
-  border-radius: 6px;
-  background: #2a2a2a;
+  border-radius: 8px;
+  background: #222;
   color: white;
 }
 
@@ -44,17 +77,20 @@ button {
   width: 100%;
   padding: 12px;
   border: none;
-  border-radius: 6px;
-  background: #ff0000;
+  border-radius: 8px;
+  background: red;
   color: white;
   font-weight: bold;
   cursor: pointer;
-  margin-top: 10px;
   transition: 0.3s;
 }
 
 button:hover {
   background: #cc0000;
+}
+
+.copy-btn {
+  background: #333;
 }
 
 #pagamento, #sucesso {
@@ -64,30 +100,17 @@ button:hover {
 textarea {
   width: 100%;
   margin-top: 10px;
-  background: #2a2a2a;
+  background: #222;
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   padding: 8px;
-}
-
-.copy-btn {
-  background: #444;
-}
-
-.copy-btn:hover {
-  background: #666;
 }
 
 .check {
   font-size: 80px;
   color: #00ff66;
-  animation: pop 0.5s ease-in-out;
-}
-
-@keyframes pop {
-  0% { transform: scale(0.5); opacity: 0; }
-  100% { transform: scale(1); opacity: 1; }
+  text-shadow: 0 0 20px #00ff66;
 }
 </style>
 </head>
@@ -95,96 +118,98 @@ textarea {
 
 <div class="container">
 
-  <div id="formulario">
-    <h2>KSPay</h2>
+<a href="https://www.instagram.com/unlockhu_b/" 
+   target="_blank" 
+   class="instagram-btn">
+   <img src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png">
+</a>
 
-    <form id="form">
-      <input type="text" placeholder="Nome" id="nome" required>
-      <input type="text" placeholder="WhatsApp" id="whatsapp" required>
-      <input type="text" placeholder="Marca do aparelho" id="aparelho" required>
-      <input type="text" placeholder="Serviço contratado" id="servico" required>
-      <input type="email" placeholder="Email" id="email" required>
-      <input type="number" placeholder="Valor (R$)" id="valor" required>
-      <button type="submit">Gerar Pix</button>
-    </form>
-  </div>
+<img src="logo.jpg" class="logo">
 
-  <div id="pagamento">
-    <h3>Escaneie o QR Code</h3>
-    <img id="qr" width="200"><br>
+<div id="formulario">
+<form id="form">
+<input type="text" placeholder="Nome" id="nome" required>
+<input type="text" placeholder="WhatsApp" id="whatsapp" required>
+<input type="text" placeholder="Marca do aparelho" id="aparelho" required>
+<input type="text" placeholder="Serviço contratado" id="servico" required>
+<input type="email" placeholder="Email" id="email" required>
+<input type="number" placeholder="Valor (R$)" id="valor" required>
+<button type="submit">Gerar Pix</button>
+</form>
+</div>
 
-    <textarea id="pixCode" rows="4" readonly></textarea>
-    <button class="copy-btn" onclick="copiarPix()">Copiar Pix</button>
+<div id="pagamento">
+<h3>Escaneie o QR Code</h3>
+<img id="qr" width="200"><br>
+<textarea id="pixCode" rows="4" readonly></textarea>
+<button class="copy-btn" onclick="copiarPix()">Copiar Pix</button>
+<p>Aguardando pagamento...</p>
+</div>
 
-    <p id="status">
-      Aguardando pagamento...
-    </p>
-  </div>
-
-  <div id="sucesso">
-    <div class="check">✔</div>
-    <h3>Pagamento Aprovado!</h3>
-    <p>Redirecionando para atendimento...</p>
-  </div>
+<div id="sucesso">
+<div class="check">✔</div>
+<h3>Pagamento Aprovado!</h3>
+<p>Redirecionando para atendimento...</p>
+</div>
 
 </div>
 
 <script>
 document.getElementById("form").addEventListener("submit", async function(e){
-  e.preventDefault();
+e.preventDefault();
 
-  const dados = {
-    nome: nome.value,
-    whatsapp: whatsapp.value,
-    aparelho: aparelho.value,
-    servico: servico.value,
-    email: email.value,
-    valor: valor.value
-  };
+const dados = {
+nome: nome.value,
+whatsapp: whatsapp.value,
+aparelho: aparelho.value,
+servico: servico.value,
+email: email.value,
+valor: valor.value
+};
 
-  const resposta = await fetch("/criar-pagamento", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(dados)
-  });
+const resposta = await fetch("/criar-pagamento", {
+method: "POST",
+headers: { "Content-Type": "application/json" },
+body: JSON.stringify(dados)
+});
 
-  const pagamento = await resposta.json();
+const pagamento = await resposta.json();
 
-  document.getElementById("formulario").style.display = "none";
-  document.getElementById("pagamento").style.display = "block";
+document.getElementById("formulario").style.display = "none";
+document.getElementById("pagamento").style.display = "block";
 
-  document.getElementById("qr").src =
-    "data:image/png;base64," + pagamento.qr_base64;
+document.getElementById("qr").src =
+"data:image/png;base64," + pagamento.qr_base64;
 
-  document.getElementById("pixCode").value = pagamento.qr_code;
+document.getElementById("pixCode").value = pagamento.qr_code;
 
-  verificarStatus(pagamento.id);
+verificarStatus(pagamento.id);
 });
 
 function copiarPix() {
-  const pix = document.getElementById("pixCode");
-  pix.select();
-  document.execCommand("copy");
-  alert("Pix copiado com sucesso!");
+const pix = document.getElementById("pixCode");
+pix.select();
+document.execCommand("copy");
+alert("Pix copiado!");
 }
 
 async function verificarStatus(id) {
-  const intervalo = setInterval(async () => {
-    const res = await fetch("/status/" + id);
-    const data = await res.json();
+const intervalo = setInterval(async () => {
+const res = await fetch("/status/" + id);
+const data = await res.json();
 
-    if (data.status === "approved") {
-      clearInterval(intervalo);
+if (data.status === "approved") {
+clearInterval(intervalo);
 
-      document.getElementById("pagamento").style.display = "none";
-      document.getElementById("sucesso").style.display = "block";
+document.getElementById("pagamento").style.display = "none";
+document.getElementById("sucesso").style.display = "block";
 
-      setTimeout(() => {
-        window.location.href =
-          "https://wa.me/5586994948442";
-      }, 4000);
-    }
-  }, 5000);
+setTimeout(() => {
+window.location.href =
+"https://wa.me/5586994948442";
+}, 4000);
+}
+}, 5000);
 }
 </script>
 
