@@ -1,7 +1,8 @@
 const express = require("express");
 const bodyParser = require("body-parser");
-const mercadopago = require("mercadopago");
 const cors = require("cors");
+
+const { MercadoPagoConfig, Payment } = require("mercadopago");
 
 const app = express();
 
@@ -9,34 +10,34 @@ app.use(bodyParser.json());
 app.use(express.static("public"));
 app.use(cors());
 
-// 🔐 Token via variável de ambiente
-mercadopago.configure({
-  access_token: process.env.MP_ACCESS_TOKEN,
+// 🔐 Configuração nova SDK
+const client = new MercadoPagoConfig({
+  accessToken: process.env.MP_ACCESS_TOKEN,
 });
+
+const payment = new Payment(client);
 
 // ✅ Criar pagamento Pix
 app.post("/criar-pagamento", async (req, res) => {
   try {
-    const { nome, whatsapp, aparelho, servico, email, valor } = req.body;
+    const { nome, aparelho, servico, email, valor } = req.body;
 
-    const payment_data = {
+    const body = {
       transaction_amount: Number(valor),
       description: `Serviço: ${servico} - ${aparelho}`,
       payment_method_id: "pix",
       payer: {
         email: email,
-        first_name: nome,
       },
     };
 
-    const pagamento = await mercadopago.payment.create(payment_data);
+    const result = await payment.create({ body });
 
     res.json({
-      id: pagamento.body.id,
-      qr_code:
-        pagamento.body.point_of_interaction.transaction_data.qr_code,
+      id: result.id,
+      qr_code: result.point_of_interaction.transaction_data.qr_code,
       qr_base64:
-        pagamento.body.point_of_interaction.transaction_data.qr_code_base64,
+        result.point_of_interaction.transaction_data.qr_code_base64,
     });
 
   } catch (error) {
@@ -45,13 +46,15 @@ app.post("/criar-pagamento", async (req, res) => {
   }
 });
 
-// ✅ Verificar status do pagamento
+// ✅ Verificar status
 app.get("/status/:id", async (req, res) => {
   try {
-    const pagamento = await mercadopago.payment.findById(req.params.id);
+    const result = await payment.get({
+      id: req.params.id,
+    });
 
     res.json({
-      status: pagamento.body.status,
+      status: result.status,
     });
 
   } catch (error) {
@@ -60,7 +63,6 @@ app.get("/status/:id", async (req, res) => {
   }
 });
 
-// 🚀 Iniciar servidor
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
