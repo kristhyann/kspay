@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>UnlockHub</title>
+<title>UnlockHub Pay</title>
 
 <style>
 body {
@@ -12,12 +12,11 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100vh;
+  min-height: 100vh;
   margin: 0;
   color: white;
 }
 
-/* Container principal */
 .container {
   background: #111;
   padding: 35px;
@@ -25,44 +24,40 @@ body {
   width: 380px;
   text-align: center;
   position: relative;
-  box-shadow: 0 0 25px rgba(255,0,0,0.4);
+  box-shadow: 0 0 30px rgba(255,0,0,0.4);
 }
 
-/* Logo */
 .logo {
-  width: 200px;
+  width: 220px;
   margin-bottom: 20px;
-  filter: drop-shadow(0 0 15px red);
+  filter: drop-shadow(0 0 20px red);
 }
 
-/* Instagram botão neon */
 .instagram-btn {
   position: absolute;
   top: -25px;
   right: -25px;
-  width: 60px;
-  height: 60px;
+  width: 65px;
+  height: 65px;
   border-radius: 50%;
-  background: black;
+  background: #000;
   display: flex;
   justify-content: center;
   align-items: center;
   border: 3px solid red;
-  box-shadow: 0 0 15px red, 0 0 30px red;
+  box-shadow: 0 0 20px red, 0 0 40px red;
   transition: 0.3s;
-  text-decoration: none;
 }
 
 .instagram-btn:hover {
   transform: scale(1.1);
-  box-shadow: 0 0 25px red, 0 0 50px red;
+  box-shadow: 0 0 30px red, 0 0 60px red;
 }
 
 .instagram-btn img {
-  width: 30px;
+  width: 32px;
 }
 
-/* Inputs */
 input {
   width: 100%;
   padding: 10px;
@@ -112,6 +107,15 @@ textarea {
   color: #00ff66;
   text-shadow: 0 0 20px #00ff66;
 }
+
+/* Rodapé */
+.footer {
+  margin-top: 20px;
+  font-size: 12px;
+  color: #aaa;
+  border-top: 1px solid #333;
+  padding-top: 15px;
+}
 </style>
 </head>
 <body>
@@ -124,7 +128,7 @@ textarea {
    <img src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png">
 </a>
 
-<img src="logo.jpg" class="logo">
+<img src="/logo.jpg?v=3" class="logo">
 
 <div id="formulario">
 <form id="form">
@@ -133,7 +137,10 @@ textarea {
 <input type="text" placeholder="Marca do aparelho" id="aparelho" required>
 <input type="text" placeholder="Serviço contratado" id="servico" required>
 <input type="email" placeholder="Email" id="email" required>
-<input type="number" placeholder="Valor (R$)" id="valor" required>
+
+<!-- VALOR FORMATADO -->
+<input type="text" placeholder="Valor (R$)" id="valor" required>
+
 <button type="submit">Gerar Pix</button>
 </form>
 </div>
@@ -152,11 +159,34 @@ textarea {
 <p>Redirecionando para atendimento...</p>
 </div>
 
+<div class="footer">
+🔒 Seus dados estão protegidos com criptografia segura.<br>
+Pagamento processado via Mercado Pago.<br>
+© 2026 UnlockHub – Todos os direitos reservados.
+</div>
+
 </div>
 
 <script>
+
+/* FORMATAÇÃO MONETÁRIA AUTOMÁTICA */
+const valorInput = document.getElementById("valor");
+
+valorInput.addEventListener("input", function(e) {
+  let value = e.target.value.replace(/\D/g, "");
+  value = (Number(value) / 100).toFixed(2) + "";
+  value = value.replace(".", ",");
+  value = value.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  e.target.value = value;
+});
+
+/* ENVIO DO FORMULÁRIO */
 document.getElementById("form").addEventListener("submit", async function(e){
 e.preventDefault();
+
+let valorLimpo = valor.value
+  .replace(/\./g, "")
+  .replace(",", ".");
 
 const dados = {
 nome: nome.value,
@@ -164,7 +194,7 @@ whatsapp: whatsapp.value,
 aparelho: aparelho.value,
 servico: servico.value,
 email: email.value,
-valor: valor.value
+valor: valorLimpo
 };
 
 const resposta = await fetch("/criar-pagamento", {
