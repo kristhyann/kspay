@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-br">
 <head>
-  <title>Cadastro</title>
+  <meta charset="UTF-8">
+  <title>Criar Conta</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -10,16 +11,27 @@
   <h2>Criar Conta</h2>
 
   <form action="/register" method="POST">
+
     <input type="text" name="nome" placeholder="Nome completo" required>
+
     <input type="text" name="cpf" placeholder="CPF" required>
+
     <input type="text" name="whatsapp" placeholder="WhatsApp" required>
+
     <input type="email" name="email" placeholder="Email" required>
+
     <input type="text" name="username" placeholder="Nome de usuário" required>
+
     <input type="password" name="password" placeholder="Senha" required>
-    <button type="submit">Cadastrar</button>
+
+    <input type="password" name="confirmPassword" placeholder="Confirmar senha" required>
+
+    <button type="submit">Criar Conta</button>
+
   </form>
 
-  <p>Já tem conta? <a href="/">Fazer login</a></p>
+  <br>
+  <p>Já tem conta? <a href="login.html">Entrar</a></p>
 </div>
 
 </body>
