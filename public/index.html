@@ -3,69 +3,138 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pagamento PIX</title>
+<title>UnlockHub - Pagamento</title>
 
 <style>
 body {
-  font-family: Arial;
-  background: #0f172a;
-  color: white;
+  margin: 0;
+  font-family: 'Segoe UI', sans-serif;
+  background: #0b0b0f;
   display: flex;
   justify-content: center;
   align-items: center;
   height: 100vh;
 }
 
-.box {
-  background: #1e293b;
+.card {
+  background: #14141c;
+  width: 380px;
   padding: 30px;
-  border-radius: 20px;
+  border-radius: 25px;
   text-align: center;
-  width: 350px;
+  position: relative;
+  box-shadow: 0 0 40px rgba(255, 0, 0, 0.3);
+}
+
+.card::before {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 28px;
+  background: linear-gradient(45deg, #ff0000, #ff3c00, #ff0000);
+  z-index: -1;
+  filter: blur(15px);
+}
+
+.logo {
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  margin-bottom: 20px;
+  box-shadow: 0 0 30px #ff0000;
 }
 
 input {
   width: 100%;
   padding: 12px;
+  margin-bottom: 12px;
   border-radius: 10px;
   border: none;
-  font-size: 18px;
-  margin-bottom: 15px;
-  text-align: center;
+  background: #1f1f2b;
+  color: white;
+  font-size: 14px;
+}
+
+input::placeholder {
+  color: #aaa;
 }
 
 button {
   width: 100%;
-  padding: 12px;
-  border-radius: 10px;
+  padding: 14px;
+  border-radius: 12px;
   border: none;
-  background: #22c55e;
+  background: linear-gradient(90deg, #ff512f, #ff7847);
   color: white;
-  font-size: 18px;
+  font-size: 16px;
   cursor: pointer;
+  transition: 0.3s;
 }
 
-img {
+button:hover {
+  transform: scale(1.05);
+}
+
+.qr-box {
   margin-top: 20px;
+  color: white;
+}
+
+.qr-box img {
+  width: 220px;
+  margin-top: 15px;
+}
+
+.copy-box {
+  margin-top: 15px;
+  padding: 10px;
+  background: #1f1f2b;
+  border-radius: 8px;
+  font-size: 12px;
+  word-break: break-all;
+  color: #ccc;
+}
+
+.status {
+  margin-top: 15px;
+  color: #aaa;
+  font-size: 13px;
+}
+
+.footer {
+  margin-top: 25px;
+  font-size: 12px;
+  color: #888;
 }
 </style>
 </head>
+
 <body>
 
-<div class="box">
-<h2>Pagamento PIX</h2>
+<div class="card">
+  <img src="logo.png" class="logo">
 
-<input type="text" id="valor" placeholder="Digite o valor">
+  <input type="text" id="nome" placeholder="Nome">
+  <input type="text" id="whatsapp" placeholder="WhatsApp">
+  <input type="text" id="marca" placeholder="Marca do aparelho">
+  <input type="text" id="servico" placeholder="Serviço contratado">
+  <input type="email" id="email" placeholder="Email">
+  <input type="text" id="valor" placeholder="Valor (R$)">
 
-<button onclick="pagar()">Gerar PIX</button>
+  <button onclick="gerarPix()">Gerar Pix</button>
 
-<div id="qr"></div>
+  <div class="qr-box" id="qrArea"></div>
+
+  <div class="footer">
+    Pagamento processado via Mercado Pago<br>
+    © 2026 UnlockHub – Todos os direitos reservados.
+  </div>
 </div>
 
 <script>
-const input = document.getElementById("valor");
+const inputValor = document.getElementById("valor");
 
-input.addEventListener("input", function (e) {
+inputValor.addEventListener("input", function (e) {
   let value = e.target.value.replace(/\D/g, "");
   value = (value / 100).toFixed(2) + "";
   value = value.replace(".", ",");
@@ -73,23 +142,40 @@ input.addEventListener("input", function (e) {
   e.target.value = value;
 });
 
-async function pagar() {
-  const valor = input.value.replace(".", "").replace(",", ".");
-  if (!valor || valor <= 0) return alert("Digite valor válido");
+async function gerarPix() {
+
+  const valor = inputValor.value.replace(".", "").replace(",", ".");
+  const email = document.getElementById("email").value;
+
+  if (!valor || valor <= 0) {
+    alert("Digite um valor válido");
+    return;
+  }
+
+  document.getElementById("qrArea").innerHTML = "Gerando pagamento...";
 
   const response = await fetch("/create-payment", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ amount: valor })
+    body: JSON.stringify({
+      amount: valor,
+      email: email
+    })
   });
 
   const data = await response.json();
 
   if (data.qr_code_base64) {
-    document.getElementById("qr").innerHTML =
-      `<img src="data:image/png;base64,${data.qr_code_base64}" width="250"/>`;
+
+    document.getElementById("qrArea").innerHTML = `
+      <h3>Escaneie o QR Code</h3>
+      <img src="data:image/png;base64,${data.qr_code_base64}">
+      <div class="copy-box">${data.qr_code}</div>
+      <div class="status">Aguardando pagamento...</div>
+    `;
+
   } else {
-    alert("Erro ao gerar pagamento");
+    document.getElementById("qrArea").innerHTML = "Erro ao gerar pagamento.";
   }
 }
 </script>

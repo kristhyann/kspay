@@ -1,31 +1,29 @@
 const express = require("express");
 const path = require("path");
-
 const { MercadoPagoConfig, Payment } = require("mercadopago");
 
 const app = express();
+
 app.use(express.json());
 app.use(express.static("public"));
 
-// 🔐 Configuração Mercado Pago (VERSÃO NOVA)
 const client = new MercadoPagoConfig({
   accessToken: process.env.MP_ACCESS_TOKEN
 });
 
 const payment = new Payment(client);
 
-// 🔥 Criar pagamento PIX
 app.post("/create-payment", async (req, res) => {
   try {
-    const { amount } = req.body;
+    const { amount, email } = req.body;
 
     const result = await payment.create({
       body: {
         transaction_amount: Number(amount),
-        description: "Pagamento via PIX",
+        description: "Pagamento UnlockHub",
         payment_method_id: "pix",
         payer: {
-          email: "cliente@email.com"
+          email: email || "cliente@email.com"
         }
       }
     });
