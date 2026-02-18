@@ -1,121 +1,138 @@
-/* RESET */
 * {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: 'Segoe UI', sans-serif;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', sans-serif;
 }
 
-/* FUNDO */
 body {
-  height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background: #0f0f0f;
-  overflow: hidden;
-  position: relative;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: radial-gradient(circle at top, #1a0000, #0f0f0f 70%);
+    position: relative;
+    overflow: hidden;
 }
 
-/* EFEITO GLOW (CORRIGIDO) */
+/* Glow fundo */
 body::before {
-  content: "";
-  position: absolute;
-  width: 600px;
-  height: 600px;
-  background: radial-gradient(circle, rgba(255, 0, 0, 0.25), transparent 70%);
-  filter: blur(80px);
-  z-index: 0;
-  pointer-events: none; /* 🔥 ISSO LIBERA O CLIQUE */
+    content: "";
+    position: absolute;
+    width: 700px;
+    height: 700px;
+    background: radial-gradient(circle, rgba(255,0,0,0.25), transparent 70%);
+    filter: blur(120px);
+    pointer-events: none;
 }
 
-/* CARD PRINCIPAL */
+/* Card */
 .card {
-  position: relative;
-  z-index: 10;
-  width: 380px;
-  padding: 35px;
-  background: #1a1a1a;
-  border-radius: 16px;
-  box-shadow: 0 0 40px rgba(255, 0, 0, 0.2);
-  text-align: center;
-  border: 1px solid rgba(255, 0, 0, 0.2);
+    position: relative;
+    z-index: 10;
+    width: 430px;
+    padding: 45px;
+    border-radius: 25px;
+    background: rgba(20,20,20,0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,0,0,0.4);
+    box-shadow: 0 0 60px rgba(255,0,0,0.25);
+    text-align: center;
 }
 
-/* TÍTULO */
 .card h1 {
-  color: white;
-  margin-bottom: 8px;
-  font-size: 28px;
+    font-size: 32px;
+    color: white;
+    margin-bottom: 8px;
 }
 
 .card h1 span {
-  color: #ff3c3c;
+    color: #ff0000;
 }
 
 .subtitle {
-  color: #aaa;
-  margin-bottom: 25px;
-  font-size: 14px;
+    color: #aaa;
+    margin-bottom: 30px;
 }
 
-/* INPUTS */
+/* Inputs */
 input {
-  width: 100%;
-  padding: 12px;
-  margin-bottom: 15px;
-  border-radius: 8px;
-  border: 1px solid #333;
-  background: #111;
-  color: white;
-  font-size: 14px;
-  outline: none;
-  transition: 0.3s;
+    width: 100%;
+    padding: 15px;
+    margin-bottom: 18px;
+    border-radius: 12px;
+    border: 1px solid #333;
+    background: #111;
+    color: white;
+    font-size: 16px;
+    transition: 0.3s;
 }
 
 input:focus {
-  border-color: #ff3c3c;
-  box-shadow: 0 0 8px rgba(255, 0, 0, 0.4);
+    border-color: #ff0000;
+    box-shadow: 0 0 15px rgba(255,0,0,0.6);
+    outline: none;
 }
 
-/* BOTÃO */
+/* Botão Neon */
 button {
-  width: 100%;
-  padding: 13px;
-  border-radius: 8px;
-  border: none;
-  background: #ff3c3c;
-  color: white;
-  font-weight: bold;
-  font-size: 15px;
-  cursor: pointer;
-  transition: 0.3s;
+    width: 100%;
+    padding: 16px;
+    border-radius: 12px;
+    border: none;
+    background: linear-gradient(90deg, #ff0000, #cc0000);
+    color: white;
+    font-size: 17px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.3s;
+    box-shadow: 0 0 25px rgba(255,0,0,0.7);
 }
 
 button:hover {
-  background: #e60000;
-  transform: scale(1.03);
+    transform: translateY(-3px);
+    box-shadow: 0 0 40px rgba(255,0,0,1);
 }
 
-button:active {
-  transform: scale(0.98);
-}
-
-/* TEXTO INFERIOR */
 .secure {
-  margin-top: 15px;
-  font-size: 12px;
-  color: #888;
+    margin-top: 20px;
+    font-size: 13px;
+    color: #888;
 }
 
-.secure span {
-  color: #ff3c3c;
+/* Redes sociais fixas */
+.social-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    display: flex;
+    gap: 15px;
 }
 
-/* RESPONSIVO */
-@media (max-width: 450px) {
-  .card {
-    width: 90%;
-    padding: 25px;
-  }
+.social-btn {
+    width: 55px;
+    height: 55px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 26px;
+    color: white;
+    text-decoration: none;
+    background: #111;
+    border: 2px solid #ff0000;
+    box-shadow: 0 0 20px #ff0000;
+    transition: 0.3s;
+    animation: pulse 2s infinite;
+}
+
+.social-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 35px #ff0000;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 15px #ff0000; }
+    50% { box-shadow: 0 0 35px #ff0000; }
+    100% { box-shadow: 0 0 15px #ff0000; }
 }
