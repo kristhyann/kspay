@@ -1,25 +1,74 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-br">
 <head>
-  <title>Dashboard</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<title>Dashboard</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<div class="container">
-  <h2>Serviços Disponíveis</h2>
+<div class="container" style="width:600px">
 
-  <form action="/criar-pedido" method="POST">
-    <select name="servicoId">
-      <option value="infinix">Remoção MDM Infinix - R$180</option>
-      <option value="realme14">MDM Realme Android 14 - R$150</option>
-    </select>
-    <button type="submit">Criar Pedido</button>
-  </form>
+<h2>Serviços Disponíveis</h2>
 
-  <br>
-  <a href="/logout">Sair</a>
+<div id="produtos"></div>
+
+<hr><br>
+
+<h2>Meus Pedidos</h2>
+
+<div id="pedidos"></div>
+
+<br>
+<a href="/logout"><button>Sair</button></a>
+
 </div>
+
+<script>
+async function carregarProdutos() {
+  const res = await fetch("/produtos");
+  const produtos = await res.json();
+
+  let html = "";
+
+  produtos.forEach(p => {
+    html += `
+      <div style="background:#222;padding:15px;margin-bottom:10px;border-radius:10px">
+        <h3>${p.nome}</h3>
+        <p>${p.descricao}</p>
+        <strong>R$ ${p.preco}</strong>
+        <form action="/criar-pedido" method="POST">
+          <input type="hidden" name="productId" value="${p._id}">
+          <button type="submit">Criar Pedido</button>
+        </form>
+      </div>
+    `;
+  });
+
+  document.getElementById("produtos").innerHTML = html;
+}
+
+async function carregarPedidos() {
+  const res = await fetch("/my-orders");
+  const pedidos = await res.json();
+
+  let html = "";
+
+  pedidos.forEach(p => {
+    html += `
+      <div style="background:#222;padding:10px;margin-bottom:10px;border-radius:10px">
+        <strong>${p.service}</strong><br>
+        Status: ${p.status}
+      </div>
+    `;
+  });
+
+  document.getElementById("pedidos").innerHTML = html;
+}
+
+carregarProdutos();
+carregarPedidos();
+</script>
 
 </body>
 </html>
