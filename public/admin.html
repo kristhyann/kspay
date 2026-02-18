@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Painel Admin</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="container">
+  <h2>Painel Administrativo</h2>
+
+  <p>Bem-vindo, administrador.</p>
+
+  <hr><br>
+
+  <h3>Atualizar Status do Pedido</h3>
+
+  <form action="/admin/update-order" method="POST">
+    <input type="text" name="orderId" placeholder="ID do Pedido" required>
+
+    <select name="status" required>
+      <option value="nao pago">Não Pago</option>
+      <option value="processando">Processando</option>
+      <option value="aprovado">Aprovado</option>
+    </select>
+
+    <button type="submit">Atualizar</button>
+  </form>
+
+  <br><br>
+
+  <a href="/logout">
+    <button>Sair</button>
+  </a>
+
+</div>
+
+</body>
+</html>
