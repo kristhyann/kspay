@@ -1,67 +1,140 @@
+require("dotenv").config();
 const express = require("express");
-const bodyParser = require("body-parser");
-const cors = require("cors");
-
-const { MercadoPagoConfig, Payment } = require("mercadopago");
+const mongoose = require("mongoose");
+const session = require("express-session");
+const bcrypt = require("bcryptjs");
 
 const app = express();
 
-app.use(bodyParser.json());
+// ================= CONFIG =================
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(express.static("public"));
-app.use(cors());
 
-// 🔐 Configuração nova SDK
-const client = new MercadoPagoConfig({
-  accessToken: process.env.MP_ACCESS_TOKEN,
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || "segredo123",
+    resave: false,
+    saveUninitialized: false,
+  })
+);
+
+// ================= MONGODB =================
+
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => console.log("MongoDB conectado"))
+  .catch(err => console.log(err));
+
+// ================= MODELS =================
+
+const userSchema = new mongoose.Schema({
+  nome: String,
+  cpf: String,
+  whatsapp: String,
+  email: String,
+  username: { type: String, unique: true },
+  password: String,
+  isAdmin: { type: Boolean, default: false }
 });
 
-const payment = new Payment(client);
+const User = mongoose.model("User", userSchema);
 
-// ✅ Criar pagamento Pix
-app.post("/criar-pagamento", async (req, res) => {
-  try {
-    const { nome, aparelho, servico, email, valor } = req.body;
+// ================= CRIAR ADMIN FIXO =================
 
-    const body = {
-      transaction_amount: Number(valor),
-      description: `Serviço: ${servico} - ${aparelho}`,
-      payment_method_id: "pix",
-      payer: {
-        email: email,
-      },
-    };
+async function createAdmin() {
+  const adminExists = await User.findOne({ username: "adminunlock2003" });
 
-    const result = await payment.create({ body });
+  if (!adminExists) {
+    const hashed = await bcrypt.hash("unlockh81820", 10);
 
-    res.json({
-      id: result.id,
-      qr_code: result.point_of_interaction.transaction_data.qr_code,
-      qr_base64:
-        result.point_of_interaction.transaction_data.qr_code_base64,
+    await User.create({
+      nome: "Administrador",
+      username: "adminunlock2003",
+      password: hashed,
+      isAdmin: true
     });
 
-  } catch (error) {
-    console.error("ERRO AO CRIAR PAGAMENTO:", error);
-    res.status(500).json({ error: "Erro ao criar pagamento" });
+    console.log("Admin criado");
+  }
+}
+
+createAdmin();
+
+// ================= CADASTRO =================
+
+app.post("/register", async (req, res) => {
+  try {
+    const { nome, cpf, whatsapp, email, username, password, confirmPassword } = req.body;
+
+    if (!nome || !username || !password) {
+      return res.send("Preencha todos os campos obrigatórios.");
+    }
+
+    if (password !== confirmPassword) {
+      return res.send("As senhas não coincidem.");
+    }
+
+    const userExists = await User.findOne({ username });
+    if (userExists) {
+      return res.send("Usuário já existe.");
+    }
+
+    const hashed = await bcrypt.hash(password, 10);
+
+    await User.create({
+      nome,
+      cpf,
+      whatsapp,
+      email,
+      username,
+      password: hashed
+    });
+
+    res.redirect("/login.html");
+
+  } catch (err) {
+    console.log(err);
+    res.send("Erro no cadastro.");
   }
 });
 
-// ✅ Verificar status
-app.get("/status/:id", async (req, res) => {
+// ================= LOGIN =================
+
+app.post("/login", async (req, res) => {
   try {
-    const result = await payment.get({
-      id: req.params.id,
-    });
+    const { username, password } = req.body;
 
-    res.json({
-      status: result.status,
-    });
+    const user = await User.findOne({ username });
+    if (!user) return res.send("Usuário não encontrado.");
 
-  } catch (error) {
-    console.error("ERRO AO VERIFICAR STATUS:", error);
-    res.status(500).json({ error: "Erro ao verificar status" });
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) return res.send("Senha incorreta.");
+
+    req.session.userId = user._id;
+    req.session.isAdmin = user.isAdmin;
+
+    if (user.isAdmin) {
+      return res.redirect("/admin.html");
+    }
+
+    res.redirect("/dashboard.html");
+
+  } catch (err) {
+    console.log(err);
+    res.send("Erro ao fazer login.");
   }
 });
+
+// ================= LOGOUT =================
+
+app.get("/logout", (req, res) => {
+  req.session.destroy(() => {
+    res.redirect("/login.html");
+  });
+});
+
+// ================= START SERVER =================
 
 const PORT = process.env.PORT || 3000;
 
