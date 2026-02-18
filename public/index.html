@@ -1,166 +1,34 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>UnlockHub | Pagamento Seguro</title>
-
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
-
-<style>
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-body {
-    background: radial-gradient(circle at top, #1a1a1a, #0d0d0d 70%);
-    font-family: 'Poppins', sans-serif;
-    height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    color: white;
-}
-
-.container {
-    background: linear-gradient(145deg, #1c1c1c, #121212);
-    padding: 50px 40px;
-    border-radius: 20px;
-    width: 400px;
-    box-shadow: 
-        0 0 60px rgba(255,0,0,0.25),
-        0 0 20px rgba(255,0,0,0.4) inset;
-    border: 1px solid rgba(255,0,0,0.2);
-    position: relative;
-    overflow: hidden;
-}
-
-.container::before {
-    content: "";
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, rgba(255,0,0,0.15), transparent 60%);
-    transform: rotate(25deg);
-}
-
-.logo {
-    text-align: center;
-    font-size: 26px;
-    font-weight: 700;
-    margin-bottom: 10px;
-    letter-spacing: 1px;
-}
-
-.logo span {
-    color: #ff0000;
-}
-
-.subtitle {
-    text-align: center;
-    font-size: 13px;
-    color: #aaa;
-    margin-bottom: 30px;
-}
-
-input {
-    width: 100%;
-    padding: 14px;
-    margin-bottom: 18px;
-    border-radius: 10px;
-    border: 1px solid #333;
-    background: #181818;
-    color: white;
-    font-size: 14px;
-    transition: 0.3s;
-}
-
-input:focus {
-    border-color: red;
-    box-shadow: 0 0 10px rgba(255,0,0,0.5);
-    outline: none;
-}
-
-button {
-    width: 100%;
-    padding: 14px;
-    border-radius: 10px;
-    border: none;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: 0.3s;
-}
-
-.btn-primary {
-    background: linear-gradient(90deg, #ff0000, #cc0000);
-    color: white;
-    box-shadow: 0 5px 20px rgba(255,0,0,0.5);
-}
-
-.btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(255,0,0,0.8);
-}
-
-.secure {
-    text-align: center;
-    margin-top: 20px;
-    font-size: 12px;
-    color: #888;
-}
-
-.footer {
-    text-align: center;
-    margin-top: 25px;
-    font-size: 11px;
-    color: #666;
-}
-</style>
+    <meta charset="UTF-8">
+    <title>UnlockHub - Pagamento</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
 
-<div class="container">
-
-    <div class="logo">
-        Unlock<span>Hub</span>
-    </div>
-
-    <div class="subtitle">
-        Pagamento seguro via Pix
-    </div>
+<div class="card">
+    <h1>Unlock<span>Hub</span></h1>
+    <p class="subtitle">Pagamento seguro via Pix</p>
 
     <form action="/pagar" method="POST">
 
         <input type="text" name="nome" placeholder="Nome completo" required>
 
-        <input type="tel" name="whatsapp" placeholder="WhatsApp" required>
+        <input type="text" name="whatsapp" placeholder="WhatsApp" required>
 
         <input type="text" name="servico" placeholder="Serviço contratado" required>
 
         <input type="email" name="email" placeholder="E-mail" required>
 
-        <input type="number" name="valor" placeholder="Valor (R$)" step="0.01" required>
+        <input type="number" name="valor" placeholder="Valor (R$)" required min="1" step="0.01">
 
-        <button type="submit" class="btn-primary">
-            Gerar Pix
-        </button>
+        <button type="submit">Gerar Pix</button>
 
     </form>
 
-    <div class="secure">
-        🔒 Ambiente 100% seguro
-    </div>
-
-    <div class="footer">
-        Pagamento processado via Mercado Pago
-    </div>
-
+    <p class="secure">🔒 Ambiente 100% seguro</p>
 </div>
 
 </body>
