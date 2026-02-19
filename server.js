@@ -1,145 +1,240 @@
+/**
+ * server.js — PIX Mercado Pago (Seguro) + Express
+ * - Gera PIX (QR Code + Copia e Cola)
+ * - Consulta status do pagamento
+ * - Segurança: Helmet, CORS restrito, Rate Limit, validação Zod, body limit
+ */
+
 require("dotenv").config();
 
+const path = require("path");
 const express = require("express");
+const helmet = require("helmet");
 const cors = require("cors");
+const rateLimit = require("express-rate-limit");
+const { z } = require("zod");
+
+// Mercado Pago SDK (nova API do pacote mercadopago)
 const { MercadoPagoConfig, Payment } = require("mercadopago");
 
 const app = express();
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(cors());
+// =====================
+// ENV / Config
+// =====================
+const PORT = process.env.PORT || 3000;
+const MP_ACCESS_TOKEN = process.env.MP_ACCESS_TOKEN;
+const APP_URL = process.env.APP_URL || ""; // ex: https://seuapp.onrender.com
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
 
-app.use(express.static("public"));
+// Render/Proxy
+app.set("trust proxy", 1);
 
-const client = new MercadoPagoConfig({
-    accessToken: process.env.MP_ACCESS_TOKEN
-});
-
-// ==========================
-// GERAR PIX
-// ==========================
-app.post("/pagar", async (req, res) => {
-
-    try {
-
-        if (!req.body.valor || !req.body.email) {
-            return res.send("Dados inválidos.");
-        }
-
-        const valorLimpo = req.body.valor
-            .replace(/\./g, "")
-            .replace(",", ".");
-
-        const valorFormatado = Number(valorLimpo);
-
-        if (isNaN(valorFormatado) || valorFormatado <= 0) {
-            return res.send("Valor inválido.");
-        }
-
-        const payment = new Payment(client);
-
-        const result = await payment.create({
-            body: {
-                transaction_amount: valorFormatado,
-                description: "Pagamento UnlockHub",
-                payment_method_id: "pix",
-                payer: {
-                    email: req.body.email
-                }
-            }
-        });
-
-        const qrBase64 = result.point_of_interaction.transaction_data.qr_code_base64;
-        const copiaCola = result.point_of_interaction.transaction_data.qr_code;
-        const paymentId = result.id;
-
-        res.redirect(`/pix?qr=${encodeURIComponent(qrBase64)}&code=${encodeURIComponent(copiaCola)}&id=${paymentId}`);
-
-    } catch (error) {
-        console.log("ERRO REAL:", error);
-        res.send("Erro ao gerar pagamento.");
-    }
-});
-
-// ==========================
-// STATUS PAGAMENTO
-// ==========================
-app.get("/status/:id", async (req, res) => {
-    try {
-
-        const payment = new Payment(client);
-        const result = await payment.get({ id: req.params.id });
-
-        res.json({ status: result.status });
-
-    } catch (error) {
-        res.json({ status: "erro" });
-    }
-});
-
-// ==========================
-// PÁGINA PIX
-// ==========================
-app.get("/pix", (req, res) => {
-
-    const { qr, code, id } = req.query;
-
-    res.send(`
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>Pagamento Pix</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-body{background:#0f0f0f;color:white;font-family:Arial;display:flex;justify-content:center;align-items:center;height:100vh}
-.card{background:#1a1a1a;padding:40px;border-radius:20px;width:420px;text-align:center;border:1px solid #ff0000;box-shadow:0 0 40px rgba(255,0,0,0.3)}
-img{width:230px;margin:20px 0}
-textarea{width:100%;height:90px;background:#111;color:white;border:1px solid #333;border-radius:10px;padding:10px}
-button{width:100%;padding:15px;margin-top:15px;background:#ff0000;color:white;border:none;border-radius:10px;cursor:pointer}
-.spinner{margin:20px auto;width:35px;height:35px;border:4px solid #333;border-top:4px solid red;border-radius:50%;animation:spin 1s linear infinite}
-@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
-.success{color:#00ff88;margin-top:15px;font-weight:bold}
-</style>
-</head>
-<body>
-
-<div class="card">
-<h2>Escaneie o QR Code</h2>
-<img src="data:image/png;base64,${qr}" />
-<textarea id="pixCode" readonly>${code}</textarea>
-<button onclick="copiar()">Copiar Código Pix</button>
-<div class="spinner"></div>
-<p id="status">Aguardando pagamento...</p>
-</div>
-
-<script>
-function copiar(){
-    const text = document.getElementById("pixCode");
-    text.select();
-    document.execCommand("copy");
-    alert("Pix copiado!");
+if (!MP_ACCESS_TOKEN) {
+  throw new Error("MP_ACCESS_TOKEN não configurado no .env");
 }
 
-setInterval(async () => {
-    const response = await fetch("/status/${id}");
-    const data = await response.json();
-    if(data.status === "approved"){
-        document.querySelector(".spinner").style.display = "none";
-        document.getElementById("status").innerHTML = "✅ Pagamento Aprovado!";
-        document.getElementById("status").classList.add("success");
-    }
-}, 5000);
-</script>
+const mpClient = new MercadoPagoConfig({ accessToken: MP_ACCESS_TOKEN });
+const paymentClient = new Payment(mpClient);
 
-</body>
-</html>
-`);
+// =====================
+// Middlewares de Segurança
+// =====================
+
+// Limite de body (anti abuso)
+app.use(express.json({ limit: "50kb" }));
+app.use(express.urlencoded({ extended: true, limit: "50kb" }));
+
+// Headers seguros
+app.use(
+  helmet({
+    contentSecurityPolicy: false, // evita quebrar se seu HTML usar inline scripts
+  })
+);
+
+// CORS (restrito)
+// Se seu front está no mesmo domínio e você não precisa de CORS, pode remover.
+app.use(
+  cors({
+    origin: function (origin, cb) {
+      // Permite chamadas sem origin (ex: Postman) e server-to-server
+      if (!origin) return cb(null, true);
+
+      // Se não configurou ALLOWED_ORIGINS, bloqueia tudo por segurança
+      if (ALLOWED_ORIGINS.length === 0) {
+        return cb(new Error("CORS bloqueado (ALLOWED_ORIGINS vazio)"), false);
+      }
+
+      if (ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
+      return cb(new Error("CORS bloqueado"), false);
+    },
+    methods: ["GET", "POST"],
+    allowedHeaders: ["Content-Type"],
+  })
+);
+
+// Rate limit (anti spam)
+const payLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000, // 10 min
+  max: 20, // 20 tentativas por IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { ok: false, error: "Muitas tentativas. Tente novamente em alguns minutos." },
 });
 
-const PORT = process.env.PORT || 3000;
+const statusLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 min
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { ok: false, error: "Muitas consultas. Aguarde um pouco." },
+});
 
+// =====================
+// Static (seu site)
+// =====================
+app.use(express.static(path.join(__dirname, "public")));
+
+// =====================
+// Validação (Zod)
+// =====================
+const PaySchema = z.object({
+  nome: z.string().min(2).max(80),
+  email: z.string().email().max(120),
+  whatsapp: z.string().min(8).max(20),
+  servico: z.string().min(2).max(120),
+  valor: z.coerce.number().positive().max(100000),
+});
+
+// =====================
+// Rotas
+// =====================
+
+/**
+ * POST /api/pagar
+ * body: { nome, email, whatsapp, servico, valor }
+ */
+app.post("/api/pagar", payLimiter, async (req, res) => {
+  const parsed = PaySchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      ok: false,
+      error: "Dados inválidos",
+      details: parsed.error.flatten(),
+    });
+  }
+
+  const { nome, email, whatsapp, servico, valor } = parsed.data;
+
+  try {
+    // Idempotency: evita duplicar cobrança se o usuário clicar várias vezes
+    // Dica: manter simples por enquanto (chave por request)
+    const idempotencyKey = `pix_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+
+    const paymentData = {
+      transaction_amount: Number(valor),
+      description: `${servico} - ${nome} (${whatsapp})`,
+      payment_method_id: "pix",
+      payer: { email },
+      // opcional: metadata para rastrear
+      metadata: {
+        nome,
+        whatsapp,
+        servico,
+      },
+      // opcional: URL de retorno (não é obrigatório no PIX)
+      // notification_url: `${APP_URL}/api/webhook`  // (webhook fica para a próxima etapa)
+    };
+
+    // A SDK aceita headers via options:
+    const result = await paymentClient.create({
+      body: paymentData,
+      requestOptions: {
+        idempotencyKey,
+      },
+    });
+
+    const status = result?.status;
+    const paymentId = result?.id;
+
+    const tx = result?.point_of_interaction?.transaction_data || {};
+    const qrCode = tx?.qr_code || null;
+    const qrBase64 = tx?.qr_code_base64 || null;
+
+    if (!paymentId || (!qrCode && !qrBase64)) {
+      return res.status(500).json({
+        ok: false,
+        error: "Não foi possível gerar o PIX (dados incompletos retornados).",
+      });
+    }
+
+    return res.json({
+      ok: true,
+      paymentId,
+      status,
+      valor: Number(valor),
+      qrCode, // copia e cola
+      qrBase64, // imagem base64 do QR
+    });
+  } catch (err) {
+    // Log seguro (não printar token nem body inteiro)
+    console.error("[/api/pagar] erro:", err?.message || err);
+
+    return res.status(500).json({
+      ok: false,
+      error: "Erro ao gerar pagamento. Tente novamente.",
+    });
+  }
+});
+
+/**
+ * GET /api/status?paymentId=123
+ */
+app.get("/api/status", statusLimiter, async (req, res) => {
+  const paymentId = String(req.query.paymentId || "").trim();
+  if (!paymentId) {
+    return res.status(400).json({ ok: false, error: "paymentId é obrigatório" });
+  }
+
+  try {
+    const result = await paymentClient.get({ id: paymentId });
+    const status = result?.status;
+
+    return res.json({
+      ok: true,
+      paymentId,
+      status,
+      // approved | pending | rejected | cancelled etc.
+    });
+  } catch (err) {
+    console.error("[/api/status] erro:", err?.message || err);
+    return res.status(500).json({ ok: false, error: "Erro ao consultar status." });
+  }
+});
+
+// Healthcheck
+app.get("/health", (req, res) => res.json({ ok: true }));
+
+// =====================
+// Error handler (CORS etc.)
+// =====================
+app.use((err, req, res, next) => {
+  if (String(err?.message || "").includes("CORS")) {
+    return res.status(403).json({ ok: false, error: "Acesso bloqueado (CORS)." });
+  }
+  console.error("[ERROR]", err?.message || err);
+  return res.status(500).json({ ok: false, error: "Erro interno." });
+});
+
+// =====================
+// Start
+// =====================
 app.listen(PORT, () => {
-    console.log("Servidor rodando na porta " + PORT);
+  console.log(`✅ Server rodando na porta ${PORT}`);
+  if (ALLOWED_ORIGINS.length === 0) {
+    console.log("⚠️ ALLOWED_ORIGINS vazio — configure no Render para liberar seu domínio.");
+  }
 });
