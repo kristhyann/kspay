@@ -10,26 +10,38 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 
-// 🔥 SERVIR ARQUIVOS DA PASTA PUBLIC
 app.use(express.static("public"));
 
-// 🔥 CONFIGURAR MERCADO PAGO
 const client = new MercadoPagoConfig({
     accessToken: process.env.MP_ACCESS_TOKEN
 });
 
-
-// ==============================
-// 🔥 ROTA PARA GERAR PIX
-// ==============================
+// ==========================
+// GERAR PIX
+// ==========================
 app.post("/pagar", async (req, res) => {
+
     try {
+
+        if (!req.body.valor || !req.body.email) {
+            return res.send("Dados inválidos.");
+        }
+
+        const valorLimpo = req.body.valor
+            .replace(/\./g, "")
+            .replace(",", ".");
+
+        const valorFormatado = Number(valorLimpo);
+
+        if (isNaN(valorFormatado) || valorFormatado <= 0) {
+            return res.send("Valor inválido.");
+        }
 
         const payment = new Payment(client);
 
         const result = await payment.create({
             body: {
-                transaction_amount: Number(req.body.valor),
+                transaction_amount: valorFormatado,
                 description: "Pagamento UnlockHub",
                 payment_method_id: "pix",
                 payer: {
@@ -45,17 +57,17 @@ app.post("/pagar", async (req, res) => {
         res.redirect(`/pix?qr=${encodeURIComponent(qrBase64)}&code=${encodeURIComponent(copiaCola)}&id=${paymentId}`);
 
     } catch (error) {
-        console.log(error);
+        console.log("ERRO REAL:", error);
         res.send("Erro ao gerar pagamento.");
     }
 });
 
-
-// ==============================
-// 🔥 VERIFICAR STATUS DO PAGAMENTO
-// ==============================
+// ==========================
+// STATUS PAGAMENTO
+// ==========================
 app.get("/status/:id", async (req, res) => {
     try {
+
         const payment = new Payment(client);
         const result = await payment.get({ id: req.params.id });
 
@@ -66,15 +78,12 @@ app.get("/status/:id", async (req, res) => {
     }
 });
 
-
-// ==============================
-// 🔥 PÁGINA PIX PREMIUM
-// ==============================
+// ==========================
+// PÁGINA PIX
+// ==========================
 app.get("/pix", (req, res) => {
 
-    const qr = req.query.qr;
-    const code = req.query.code;
-    const paymentId = req.query.id;
+    const { qr, code, id } = req.query;
 
     res.send(`
 <!DOCTYPE html>
@@ -84,102 +93,28 @@ app.get("/pix", (req, res) => {
 <title>Pagamento Pix</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-
-*{margin:0;padding:0;box-sizing:border-box;font-family:Arial,sans-serif}
-
-body{
-background:#0f0f0f;
-display:flex;
-justify-content:center;
-align-items:center;
-height:100vh;
-color:white;
-}
-
-.card{
-background:#1a1a1a;
-padding:35px;
-border-radius:15px;
-width:400px;
-text-align:center;
-box-shadow:0 0 40px rgba(255,0,0,0.3);
-border:1px solid rgba(255,0,0,0.2);
-}
-
-.qr{
-width:220px;
-margin:20px auto;
-}
-
-textarea{
-width:100%;
-height:80px;
-background:#111;
-color:white;
-border:1px solid #333;
-border-radius:8px;
-padding:10px;
-resize:none;
-}
-
-button{
-width:100%;
-padding:12px;
-margin-top:10px;
-background:#ff0000;
-color:white;
-border:none;
-border-radius:8px;
-cursor:pointer;
-font-weight:bold;
-}
-
-button:hover{
-background:#cc0000;
-}
-
-.spinner{
-margin:15px auto;
-width:30px;
-height:30px;
-border:4px solid #333;
-border-top:4px solid red;
-border-radius:50%;
-animation:spin 1s linear infinite;
-}
-
-@keyframes spin{
-0%{transform:rotate(0deg)}
-100%{transform:rotate(360deg)}
-}
-
-.success{
-color:#00ff88;
-margin-top:15px;
-font-weight:bold;
-}
-
+body{background:#0f0f0f;color:white;font-family:Arial;display:flex;justify-content:center;align-items:center;height:100vh}
+.card{background:#1a1a1a;padding:40px;border-radius:20px;width:420px;text-align:center;border:1px solid #ff0000;box-shadow:0 0 40px rgba(255,0,0,0.3)}
+img{width:230px;margin:20px 0}
+textarea{width:100%;height:90px;background:#111;color:white;border:1px solid #333;border-radius:10px;padding:10px}
+button{width:100%;padding:15px;margin-top:15px;background:#ff0000;color:white;border:none;border-radius:10px;cursor:pointer}
+.spinner{margin:20px auto;width:35px;height:35px;border:4px solid #333;border-top:4px solid red;border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+.success{color:#00ff88;margin-top:15px;font-weight:bold}
 </style>
 </head>
 <body>
 
-<div class="card" id="card">
-
+<div class="card">
 <h2>Escaneie o QR Code</h2>
-
-<img class="qr" src="data:image/png;base64,${qr}" />
-
+<img src="data:image/png;base64,${qr}" />
 <textarea id="pixCode" readonly>${code}</textarea>
-
 <button onclick="copiar()">Copiar Código Pix</button>
-
 <div class="spinner"></div>
 <p id="status">Aguardando pagamento...</p>
-
 </div>
 
 <script>
-
 function copiar(){
     const text = document.getElementById("pixCode");
     text.select();
@@ -188,16 +123,14 @@ function copiar(){
 }
 
 setInterval(async () => {
-
-    const response = await fetch("/status/${paymentId}");
+    const response = await fetch("/status/${id}");
     const data = await response.json();
-
     if(data.status === "approved"){
+        document.querySelector(".spinner").style.display = "none";
         document.getElementById("status").innerHTML = "✅ Pagamento Aprovado!";
+        document.getElementById("status").classList.add("success");
     }
-
 }, 5000);
-
 </script>
 
 </body>
@@ -205,10 +138,6 @@ setInterval(async () => {
 `);
 });
 
-
-// ==============================
-// 🔥 INICIAR SERVIDOR
-// ==============================
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
