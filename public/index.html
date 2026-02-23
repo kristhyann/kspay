@@ -19,16 +19,14 @@
         <input type="text" id="nome" placeholder="Seu nome" required>
 
         <input type="text" id="whatsapp" placeholder="WhatsApp" required
-            pattern="[0-9]+"
-            oninput="this.value = this.value.replace(/[^0-9]/g,'')">
+               oninput="this.value = this.value.replace(/[^0-9]/g,'')">
 
         <input type="text" id="servico" placeholder="Serviço" required>
 
         <input type="email" id="email" placeholder="E-mail" required>
 
         <input type="text" id="valor" placeholder="Valor (ex: 50.00)" required
-            pattern="[0-9.]+"
-            oninput="this.value = this.value.replace(/[^0-9.]/g,'')">
+               oninput="this.value = this.value.replace(/[^0-9.]/g,'')">
 
         <button type="submit" id="btnGerar">Gerar Pix</button>
 
@@ -46,12 +44,15 @@
         <div id="qrWrap" style="margin-bottom:20px;"></div>
 
         <textarea id="pixCode"
-            style="width:100%;padding:10px;border-radius:10px;background:#111;color:white;border:1px solid #333;"
-            rows="4" readonly></textarea>
+                  style="width:100%;padding:10px;border-radius:10px;background:#111;color:white;border:1px solid #333;"
+                  rows="4" readonly></textarea>
 
-        <button onclick="copiarPix()" style="margin-top:10px;">Copiar código PIX</button>
+        <button onclick="copiarPix()" style="margin-top:10px;">
+            Copiar código PIX
+        </button>
 
-        <button onclick="novoPix()" style="margin-top:10px;background:#222;border:1px solid #ff0000;">
+        <button onclick="novoPix()"
+                style="margin-top:10px;background:#222;border:1px solid #ff0000;">
             Gerar Novo Pix
         </button>
 
@@ -71,7 +72,7 @@ form.addEventListener("submit", async function (e) {
     if (btnGerar.disabled) return;
 
     btnGerar.disabled = true;
-    btnGerar.textContent = "Gerando PIX... Aguarde";
+    btnGerar.textContent = "Gerando PIX...";
 
     const dados = {
         nome: document.getElementById("nome").value.trim(),
@@ -82,41 +83,44 @@ form.addEventListener("submit", async function (e) {
     };
 
     try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 30000);
 
         const response = await fetch("/api/pagar", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(dados),
-            signal: controller.signal
+            body: JSON.stringify(dados)
         });
 
-        clearTimeout(timeout);
-
         if (!response.ok) {
-            throw new Error("Servidor demorou para responder.");
+            throw new Error("Erro na resposta do servidor");
         }
 
         const data = await response.json();
 
-        if (!data.ok) {
-            throw new Error(data.error || "Erro ao gerar PIX.");
+        console.log("RESPOSTA API:", data);
+
+        const qrBase64 = data.qrBase64 || data.qr || null;
+        const qrCode = data.qrCode || data.copiaecola || data.pixCode || null;
+
+        if (!qrBase64 && !qrCode) {
+            throw new Error("Resposta inválida da API");
         }
 
-        // Mostrar PIX apenas se sucesso
+        // Mostra área PIX
         form.classList.add("hidden");
         pixArea.classList.remove("hidden");
 
-        if (data.qrBase64) {
+        if (qrBase64) {
             document.getElementById("qrWrap").innerHTML =
-                `<img src="data:image/png;base64,${data.qrBase64}" alt="QR Code" style="width:220px;">`;
+                `<img src="data:image/png;base64,${qrBase64}" alt="QR Code" style="width:220px;">`;
         }
 
-        document.getElementById("pixCode").value = data.qrCode;
+        if (qrCode) {
+            document.getElementById("pixCode").value = qrCode;
+        }
 
     } catch (err) {
-        alert("Servidor iniciando. Aguarde alguns segundos e tente novamente.");
+        console.error(err);
+        alert("Erro ao gerar PIX. Tente novamente.");
         btnGerar.disabled = false;
         btnGerar.textContent = "Gerar Pix";
     }
