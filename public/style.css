@@ -5,14 +5,21 @@
     font-family: 'Segoe UI', sans-serif;
 }
 
+/* ===== CORREÇÃO RESPONSIVIDADE ===== */
+html, body {
+    width: 100%;
+    min-height: 100vh;
+}
+
 body {
-    height: 100vh;
+    min-height: 100vh;
     display: flex;
     justify-content: center;
     align-items: center;
     background: radial-gradient(circle at top, #1a0000, #0f0f0f 70%);
     position: relative;
-    overflow: hidden;
+    overflow-x: hidden; /* impede corte lateral */
+    padding: 20px; /* evita colar na borda em telas menores */
 }
 
 /* Glow fundo */
@@ -30,7 +37,8 @@ body::before {
 .card {
     position: relative;
     z-index: 10;
-    width: 430px;
+    width: 100%;
+    max-width: 430px; /* antes era fixo 430px */
     padding: 45px;
     border-radius: 25px;
     background: rgba(20,20,20,0.95);
@@ -98,6 +106,33 @@ button:hover {
     margin-top: 20px;
     font-size: 13px;
     color: #888;
+}
+
+/* ===== CLASSE PARA ESCONDER ELEMENTOS ===== */
+.hidden {
+    display: none;
+}
+
+/* ===== RESPONSIVO MOBILE ===== */
+@media (max-width: 480px) {
+    .card {
+        padding: 30px 20px;
+        border-radius: 20px;
+    }
+
+    .card h1 {
+        font-size: 24px;
+    }
+
+    input {
+        padding: 13px;
+        font-size: 15px;
+    }
+
+    button {
+        padding: 14px;
+        font-size: 15px;
+    }
 }
 
 /* Redes sociais fixas */
