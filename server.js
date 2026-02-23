@@ -24,17 +24,11 @@ const paymentClient = new Payment(mpClient);
 
 app.set("trust proxy", 1);
 
-// Segurança básica
 app.use(helmet());
 app.use(express.json({ limit: "50kb" }));
 app.use(express.urlencoded({ extended: true, limit: "50kb" }));
-
-// Arquivos estáticos
 app.use(express.static(path.join(__dirname, "public")));
 
-// ============================
-// RATE LIMIT
-// ============================
 const payLimiter = rateLimit({
   windowMs: 10 * 60 * 1000,
   max: 20,
@@ -47,36 +41,51 @@ const statusLimiter = rateLimit({
   message: { ok: false, error: "Muitas consultas. Aguarde um pouco." },
 });
 
-// ============================
-// VALIDAÇÃO
-// ============================
+/*
+  Normaliza valor:
+  aceita "50", "50.00", "50,00"
+*/
+function normalizeValor(v) {
+  if (typeof v === "string") {
+    v = v.replace(",", ".");
+  }
+  return Number(v);
+}
+
 const PaySchema = z.object({
   nome: z.string().min(2).max(80),
   email: z.string().email().max(120),
   whatsapp: z.string().min(8).max(20),
   servico: z.string().min(2).max(120),
-  valor: z.coerce.number().positive().max(100000),
+  valor: z.any(),
 });
 
-// ============================
-// GERAR PIX
-// ============================
 app.post("/api/pagar", payLimiter, async (req, res) => {
   const parsed = PaySchema.safeParse(req.body);
 
   if (!parsed.success) {
+    console.log("Erro validação Zod:", parsed.error.issues);
     return res.status(400).json({
       ok: false,
       error: "Dados inválidos",
     });
   }
 
-  const { nome, email, whatsapp, servico, valor } = parsed.data;
+  let { nome, email, whatsapp, servico, valor } = parsed.data;
+
+  valor = normalizeValor(valor);
+
+  if (!valor || isNaN(valor) || valor <= 0 || valor > 100000) {
+    return res.status(400).json({
+      ok: false,
+      error: "Valor inválido",
+    });
+  }
 
   try {
     const result = await paymentClient.create({
       body: {
-        transaction_amount: Number(valor),
+        transaction_amount: valor,
         description: `${servico} - ${nome} (${whatsapp})`,
         payment_method_id: "pix",
         payer: {
@@ -101,7 +110,7 @@ app.post("/api/pagar", payLimiter, async (req, res) => {
       qrBase64: tx.qr_code_base64,
     });
   } catch (err) {
-    console.error("Erro ao gerar pagamento:", err.message);
+    console.error("Erro ao gerar pagamento:", err);
     return res.status(500).json({
       ok: false,
       error: "Erro ao gerar pagamento.",
@@ -109,9 +118,6 @@ app.post("/api/pagar", payLimiter, async (req, res) => {
   }
 });
 
-// ============================
-// CONSULTAR STATUS
-// ============================
 app.get("/api/status", statusLimiter, async (req, res) => {
   const paymentId = req.query.paymentId;
 
@@ -131,7 +137,7 @@ app.get("/api/status", statusLimiter, async (req, res) => {
       status: result.status,
     });
   } catch (err) {
-    console.error("Erro ao consultar status:", err.message);
+    console.error("Erro ao consultar status:", err);
     return res.status(500).json({
       ok: false,
       error: "Erro ao consultar status.",
@@ -139,7 +145,6 @@ app.get("/api/status", statusLimiter, async (req, res) => {
   }
 });
 
-// Healthcheck
 app.get("/health", (req, res) => {
   res.json({ ok: true });
 });
