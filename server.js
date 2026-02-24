@@ -1,114 +1,118 @@
-// ==============================
-// FORMATAR VALOR COMO MOEDA
-// ==============================
-const campoValor = document.getElementById("valor");
+require("dotenv").config();
+const express = require("express");
+const axios = require("axios");
+const path = require("path");
+const QRCode = require("qrcode");
 
-campoValor.addEventListener("input", function (e) {
+const app = express();
+const PORT = process.env.PORT || 10000;
+const PIXZY_TOKEN = process.env.PIXZY_TOKEN;
 
-    let value = e.target.value.replace(/\D/g, "");
+if (!PIXZY_TOKEN) {
+    console.error("PIXZY_TOKEN não configurado!");
+    process.exit(1);
+}
 
-    value = (parseInt(value, 10) / 100).toFixed(2);
+app.use(express.json());
+app.use(express.static(path.join(__dirname, "public")));
 
-    value = value.replace(".", ",");
-
-    e.target.value = value;
+app.get("/", (req, res) => {
+    res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// ==============================
-// GERAR PIX
-// ==============================
-async function gerarPix() {
+let pagamentos = {};
 
-    const nome = document.getElementById("nome").value.trim();
-    const email = document.getElementById("email").value.trim();
-    let valorInput = document.getElementById("valor").value;
+console.log("🚀 UNLOCKHUB SERVE - PIXZY ATIVO");
 
-    if (!nome || !email || !valorInput) {
-        alert("Preencha todos os campos");
-        return;
-    }
-
-    // 🔥 Converter "500,00" → 500.00
-    const valorNumerico = parseFloat(
-        valorInput.replace(".", "").replace(",", ".")
-    );
-
-    if (isNaN(valorNumerico) || valorNumerico <= 0) {
-        alert("Valor inválido");
-        return;
-    }
-
+// ==========================
+// CRIAR PAGAMENTO
+// ==========================
+app.post("/api/pagar", async (req, res) => {
     try {
+        const { nome, email, valor } = req.body;
 
-        const response = await fetch("/api/pagar", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
+        if (!nome || !email || !valor) {
+            return res.status(400).json({
+                ok: false,
+                error: "Dados obrigatórios ausentes"
+            });
+        }
+
+        const valorCentavos = Math.round(Number(valor) * 100);
+
+        const response = await axios.post(
+            "https://pay.pixzy.io/api/transactions",
+            {
+                amount: valorCentavos,
+                client_name: nome,
+                client_email: email,
+                client_doc: "00000000000",
+                webhook_url: "https://kspay.onrender.com/api/webhook",
+                metadata: {
+                    loja: "unlockhub_serve"
+                }
             },
-            body: JSON.stringify({
-                nome,
-                email,
-                valor: valorNumerico
-            })
+            {
+                headers: {
+                    Authorization: `Bearer ${PIXZY_TOKEN}`,
+                    "Content-Type": "application/json"
+                }
+            }
+        );
+
+        const data = response.data.data;
+
+        pagamentos[data.transaction_id] = "pending";
+
+        const qrBase64 = await QRCode.toDataURL(data.br_code);
+
+        res.json({
+            ok: true,
+            paymentId: data.transaction_id,
+            qrCode: data.br_code,
+            qrBase64: qrBase64
         });
 
-        const data = await response.json();
-
-        if (!data.ok) {
-            alert("Erro ao gerar Pix");
-            return;
-        }
-
-        // QR IMAGE
-        document.getElementById("qrImage").src = data.qrBase64;
-
-        // Copia e cola
-        document.getElementById("pixCode").value = data.qrCode;
-
-        iniciarVerificacao(data.paymentId);
-
-    } catch (error) {
-        console.error("Erro:", error);
-        alert("Erro na requisição");
+    } catch (err) {
+        console.error("Erro Pixzy:", err.response?.data || err.message);
+        res.status(500).json({
+            ok: false,
+            error: "Erro ao criar transação"
+        });
     }
-}
+});
 
-// ==============================
-// VERIFICAR STATUS
-// ==============================
-function iniciarVerificacao(paymentId) {
+// ==========================
+// STATUS
+// ==========================
+app.get("/api/status", (req, res) => {
+    const { paymentId } = req.query;
+    const status = pagamentos[paymentId] || "pending";
+    res.json({ status });
+});
 
-    const intervalo = setInterval(async () => {
+// ==========================
+// WEBHOOK
+// ==========================
+app.post("/api/webhook", (req, res) => {
+    const evento = req.body;
 
-        const response = await fetch(`/api/status?paymentId=${paymentId}`);
-        const data = await response.json();
+    if (evento.event === "paid") {
+        pagamentos[evento.transaction?.id] = "approved";
+        console.log("✅ Pagamento aprovado");
+    }
 
-        if (data.status === "approved") {
-            clearInterval(intervalo);
-            mostrarAprovado();
-        }
+    if (evento.event === "expired") {
+        pagamentos[evento.transaction?.id] = "expired";
+    }
 
-        if (data.status === "expired") {
-            clearInterval(intervalo);
-            alert("Pagamento expirado");
-        }
+    if (evento.event === "failed") {
+        pagamentos[evento.transaction?.id] = "failed";
+    }
 
-    }, 3000);
-}
+    res.sendStatus(200);
+});
 
-// ==============================
-// TELA APROVADO
-// ==============================
-function mostrarAprovado() {
-
-    const container = document.getElementById("container");
-
-    container.innerHTML = `
-        <div style="text-align:center;">
-            <h2 style="color:#00ff88; font-size:28px;">
-                PAGAMENTO APROVADO ✅
-            </h2>
-            <p style="color:#fff;">Seu pagamento foi confirmado com sucesso.</p>
-        </div>
-    `;
-}
+app.listen(PORT, () => {
+    console.log(`🌍 Servidor rodando na porta ${PORT}`);
+});
