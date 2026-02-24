@@ -4,13 +4,21 @@ const axios = require("axios");
 const path = require("path");
 
 const app = express();
-app.use(express.json());
-app.use(express.static(path.join(__dirname)));
 
 const PORT = process.env.PORT || 10000;
 const PIXZY_TOKEN = process.env.PIXZY_TOKEN;
 
-let pagamentos = {}; // memória simples para status
+app.use(express.json());
+
+// 🔥 SERVIR PUBLIC CORRETAMENTE
+app.use(express.static(path.join(__dirname, "public")));
+
+// 🔥 ROTA RAIZ GARANTIDA
+app.get("/", (req, res) => {
+    res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+let pagamentos = {};
 
 console.log("VERSAO PIXZY ATIVA");
 
@@ -18,9 +26,7 @@ console.log("VERSAO PIXZY ATIVA");
 // CRIAR PAGAMENTO
 // ==========================
 app.post("/api/pagar", async (req, res) => {
-
     try {
-
         const { nome, email, valor } = req.body;
 
         const valorCentavos = Math.round(parseFloat(valor) * 100);
@@ -31,7 +37,7 @@ app.post("/api/pagar", async (req, res) => {
                 amount: valorCentavos,
                 client_name: nome,
                 client_email: email,
-                client_doc: "00000000000", // pode ajustar depois
+                client_doc: "00000000000",
                 webhook_url: "https://kspay.onrender.com/api/webhook",
                 metadata: {
                     origem: "unlockhub"
@@ -56,7 +62,6 @@ app.post("/api/pagar", async (req, res) => {
         });
 
     } catch (err) {
-
         console.log("Erro Pixzy:", err.response?.data || err.message);
 
         res.status(500).json({
@@ -70,11 +75,8 @@ app.post("/api/pagar", async (req, res) => {
 // STATUS
 // ==========================
 app.get("/api/status", (req, res) => {
-
     const { paymentId } = req.query;
-
     const status = pagamentos[paymentId] || "pending";
-
     res.json({ status });
 });
 
@@ -82,24 +84,17 @@ app.get("/api/status", (req, res) => {
 // WEBHOOK
 // ==========================
 app.post("/api/webhook", (req, res) => {
-
     const evento = req.body;
 
     if (evento.event === "paid") {
-
         const id = evento.transaction?.id;
-
         pagamentos[id] = "approved";
-
         console.log("Pagamento aprovado:", id);
     }
 
     if (evento.event === "expired") {
-
         const id = evento.transaction?.id;
-
         pagamentos[id] = "expired";
-
         console.log("Pagamento expirado:", id);
     }
 
