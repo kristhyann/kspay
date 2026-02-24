@@ -1,235 +1,136 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>UNLOCKHUB SERVE</title>
+    <meta charset="UTF-8">
+    <title>UNLOCKHUB SERVE - Pagamento PIX</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<style>
-body {
-    margin: 0;
-    font-family: Arial, sans-serif;
-    background: radial-gradient(circle at top, #2a0000, #000);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-}
+    <style>
+        body {
+            background-color: #0f172a;
+            font-family: Arial, Helvetica, sans-serif;
+            margin: 0;
+            padding: 0;
+            color: #fff;
+        }
 
-.card {
-    background: #111;
-    padding: 30px;
-    width: 350px;
-    border-radius: 15px;
-    box-shadow: 0 0 30px rgba(255,0,0,0.4);
-    text-align: center;
-}
+        .container {
+            max-width: 420px;
+            margin: 60px auto;
+            background: #1e293b;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 0 25px rgba(0,0,0,0.4);
+        }
 
-h1 {
-    color: white;
-    margin-bottom: 5px;
-}
+        h1 {
+            text-align: center;
+            margin-bottom: 5px;
+            font-size: 22px;
+        }
 
-h1 span {
-    color: red;
-}
+        .subtitle {
+            text-align: center;
+            font-size: 13px;
+            color: #94a3b8;
+            margin-bottom: 25px;
+        }
 
-p {
-    color: #aaa;
-    font-size: 14px;
-}
+        input, button, textarea {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            border: none;
+            font-size: 15px;
+        }
 
-input {
-    width: 100%;
-    padding: 10px;
-    margin-top: 10px;
-    border-radius: 8px;
-    border: none;
-    background: #222;
-    color: white;
-}
+        input, textarea {
+            background: #334155;
+            color: #fff;
+        }
 
-button {
-    width: 100%;
-    padding: 12px;
-    margin-top: 15px;
-    border-radius: 8px;
-    border: none;
-    background: red;
-    color: white;
-    font-weight: bold;
-    cursor: pointer;
-}
+        button {
+            background: #00ff88;
+            color: #000;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
 
-button:hover {
-    opacity: 0.8;
-}
+        button:hover {
+            background: #00cc6a;
+        }
 
-.hidden {
-    display: none;
-}
+        #qrSection {
+            display: none;
+            margin-top: 20px;
+            text-align: center;
+        }
 
-textarea {
-    width: 100%;
-    margin-top: 10px;
-    height: 70px;
-    background: #222;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    padding: 8px;
-    resize: none;
-}
-</style>
+        #qrImage {
+            width: 220px;
+            margin: 15px auto;
+        }
+
+        textarea {
+            height: 80px;
+            resize: none;
+        }
+
+        .success {
+            text-align: center;
+            font-size: 20px;
+            color: #00ff88;
+            margin-top: 20px;
+            animation: pulse 1s infinite alternate;
+        }
+
+        @keyframes pulse {
+            from { opacity: 0.5; }
+            to { opacity: 1; }
+        }
+    </style>
 </head>
-
 <body>
 
-<div class="card">
+<div class="container" id="container">
 
-<h1>UNLOCKHUB <span>SERVE</span></h1>
-<p>Pagamento rápido e seguro</p>
+    <h1>UNLOCKHUB SERVE</h1>
+    <div class="subtitle">Pagamento via PIX seguro</div>
 
-<form id="formPagamento">
-<input id="nome" placeholder="Seu nome" required>
-<input id="whatsapp" placeholder="WhatsApp" required>
-<input id="servico" placeholder="Serviço" required>
-<input id="email" placeholder="Email" type="email" required>
-<input id="valor" placeholder="Valor" required>
-<button id="btnGerar">Gerar Pix</button>
-</form>
+    <input type="text" id="nome" placeholder="Seu nome">
+    <input type="email" id="email" placeholder="Seu email">
+    <input type="text" id="valor" placeholder="Valor (0,00)">
 
-<div id="pixArea" class="hidden">
-<h3 style="color:white;">Escaneie o QR Code</h3>
-<div id="qrWrap"></div>
-<textarea id="pixCode" readonly></textarea>
-<button onclick="copiarPix()">Copiar código PIX</button>
-<button onclick="novoPix()" style="background:#333;">Gerar Novo Pix</button>
-</div>
+    <button onclick="gerarPix()">GERAR PIX</button>
+
+    <div id="qrSection">
+        <h3>Escaneie o QR Code</h3>
+
+        <img id="qrImage" src="">
+
+        <p>Ou copie o código:</p>
+        <textarea id="pixCode" readonly></textarea>
+    </div>
 
 </div>
+
+<script src="script.js"></script>
 
 <script>
-
-let paymentIdGlobal = null;
-let intervalStatus = null;
-
-const form = document.getElementById("formPagamento");
-const btnGerar = document.getElementById("btnGerar");
-const pixArea = document.getElementById("pixArea");
-
-form.addEventListener("submit", async function (e) {
-    e.preventDefault();
-
-    if (btnGerar.disabled) return;
-
-    btnGerar.disabled = true;
-    btnGerar.textContent = "Gerando PIX...";
-
-    const dados = {
-        nome: document.getElementById("nome").value.trim(),
-        whatsapp: document.getElementById("whatsapp").value.trim(),
-        servico: document.getElementById("servico").value.trim(),
-        email: document.getElementById("email").value.trim(),
-        valor: document.getElementById("valor").value.trim()
-    };
-
-    try {
-
-        const response = await fetch("/api/pagar", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(dados)
-        });
-
-        const data = await response.json();
-
-        if (!data.ok) throw new Error(data.error);
-
-        paymentIdGlobal = data.paymentId;
-
-        form.classList.add("hidden");
-        pixArea.classList.remove("hidden");
-
-        if (data.qrBase64) {
-            document.getElementById("qrWrap").innerHTML =
-                `<img src="data:image/png;base64,${data.qrBase64}" style="width:220px;">`;
-        }
-
-        if (data.qrCode) {
-            document.getElementById("pixCode").value = data.qrCode;
-        }
-
-        iniciarVerificacao();
-
-    } catch (err) {
-        alert("Erro ao gerar PIX. Tente novamente.");
-        btnGerar.disabled = false;
-        btnGerar.textContent = "Gerar Pix";
-    }
-});
-
-function iniciarVerificacao() {
-
-    intervalStatus = setInterval(async () => {
-
-        if (!paymentIdGlobal) return;
-
-        try {
-
-            const response = await fetch(`/api/status?paymentId=${paymentIdGlobal}`);
-            const data = await response.json();
-
-            if (data.status === "approved") {
-                clearInterval(intervalStatus);
-                mostrarAprovado();
-            }
-
-        } catch (err) {
-            console.log("Erro verificando status");
-        }
-
-    }, 5000);
-}
-
 function mostrarAprovado() {
-
-    pixArea.innerHTML = `
-        <div style="text-align:center; animation: pop .4s ease;">
-            <h2 style="color:#00ff88; font-size:28px;">
-                PAGAMENTO APROVADO ✅
-            </h2>
-            <p style="color:white; margin-top:10px;">
+    const container = document.getElementById("container");
+    container.innerHTML = `
+        <div class="success">
+            PAGAMENTO APROVADO ✅
+            <p style="font-size:14px;color:#94a3b8;margin-top:10px;">
                 Seu pagamento foi confirmado com sucesso.
             </p>
         </div>
     `;
 }
-
-function copiarPix() {
-    const codigo = document.getElementById("pixCode");
-    codigo.select();
-    document.execCommand("copy");
-    alert("Código PIX copiado!");
-}
-
-function novoPix() {
-    clearInterval(intervalStatus);
-    pixArea.classList.add("hidden");
-    form.classList.remove("hidden");
-    form.reset();
-    btnGerar.disabled = false;
-    btnGerar.textContent = "Gerar Pix";
-}
-
 </script>
-
-<style>
-@keyframes pop {
-    0% { transform: scale(.8); opacity: 0; }
-    100% { transform: scale(1); opacity: 1; }
-}
-</style>
 
 </body>
 </html>
