@@ -2,25 +2,35 @@ require("dotenv").config();
 const express = require("express");
 const axios = require("axios");
 const path = require("path");
+const QRCode = require("qrcode");
 
 const app = express();
 
 const PORT = process.env.PORT || 10000;
 const PIXZY_TOKEN = process.env.PIXZY_TOKEN;
 
+if (!PIXZY_TOKEN) {
+    console.error("PIXZY_TOKEN não configurado!");
+    process.exit(1);
+}
+
 app.use(express.json());
 
-// 🔥 SERVIR PUBLIC CORRETAMENTE
+// ==========================
+// SERVIR ARQUIVOS PUBLIC
+// ==========================
 app.use(express.static(path.join(__dirname, "public")));
 
-// 🔥 ROTA RAIZ GARANTIDA
 app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
+// ==========================
+// MEMÓRIA TEMPORÁRIA STATUS
+// ==========================
 let pagamentos = {};
 
-console.log("VERSAO PIXZY ATIVA");
+console.log("🚀 UNLOCKHUB SERVE - PIXZY ATIVO");
 
 // ==========================
 // CRIAR PAGAMENTO
@@ -28,6 +38,13 @@ console.log("VERSAO PIXZY ATIVA");
 app.post("/api/pagar", async (req, res) => {
     try {
         const { nome, email, valor } = req.body;
+
+        if (!nome || !email || !valor) {
+            return res.status(400).json({
+                ok: false,
+                error: "Dados obrigatórios ausentes"
+            });
+        }
 
         const valorCentavos = Math.round(parseFloat(valor) * 100);
 
@@ -40,7 +57,7 @@ app.post("/api/pagar", async (req, res) => {
                 client_doc: "00000000000",
                 webhook_url: "https://kspay.onrender.com/api/webhook",
                 metadata: {
-                    origem: "unlockhub"
+                    loja: "unlockhub_serve"
                 }
             },
             {
@@ -55,14 +72,18 @@ app.post("/api/pagar", async (req, res) => {
 
         pagamentos[data.transaction_id] = "pending";
 
+        // 🔥 GERAR QR EM IMAGEM BASE64
+        const qrBase64 = await QRCode.toDataURL(data.br_code);
+
         res.json({
             ok: true,
             paymentId: data.transaction_id,
-            qrCode: data.br_code
+            qrCode: data.br_code,
+            qrBase64: qrBase64
         });
 
     } catch (err) {
-        console.log("Erro Pixzy:", err.response?.data || err.message);
+        console.error("Erro Pixzy:", err.response?.data || err.message);
 
         res.status(500).json({
             ok: false,
@@ -72,16 +93,25 @@ app.post("/api/pagar", async (req, res) => {
 });
 
 // ==========================
-// STATUS
+// CONSULTAR STATUS
 // ==========================
 app.get("/api/status", (req, res) => {
     const { paymentId } = req.query;
+
+    if (!paymentId) {
+        return res.status(400).json({
+            ok: false,
+            error: "paymentId obrigatório"
+        });
+    }
+
     const status = pagamentos[paymentId] || "pending";
+
     res.json({ status });
 });
 
 // ==========================
-// WEBHOOK
+// WEBHOOK PIXZY
 // ==========================
 app.post("/api/webhook", (req, res) => {
     const evento = req.body;
@@ -89,18 +119,25 @@ app.post("/api/webhook", (req, res) => {
     if (evento.event === "paid") {
         const id = evento.transaction?.id;
         pagamentos[id] = "approved";
-        console.log("Pagamento aprovado:", id);
+        console.log("✅ Pagamento aprovado:", id);
     }
 
     if (evento.event === "expired") {
         const id = evento.transaction?.id;
         pagamentos[id] = "expired";
-        console.log("Pagamento expirado:", id);
+        console.log("⏳ Pagamento expirado:", id);
+    }
+
+    if (evento.event === "failed") {
+        const id = evento.transaction?.id;
+        pagamentos[id] = "failed";
+        console.log("❌ Pagamento falhou:", id);
     }
 
     res.sendStatus(200);
 });
 
+// ==========================
 app.listen(PORT, () => {
-    console.log(`Servidor rodando na porta ${PORT}`);
+    console.log(`🌍 Servidor rodando na porta ${PORT}`);
 });
