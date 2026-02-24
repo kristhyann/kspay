@@ -1,22 +1,23 @@
-// ==============================
-// FORMATAÇÃO AUTOMÁTICA 0,00
-// ==============================
-const campoValor = document.getElementById("valor");
+document.addEventListener("DOMContentLoaded", function () {
 
-campoValor.addEventListener("input", function (e) {
+    const campoValor = document.getElementById("valor");
 
-    let value = e.target.value.replace(/\D/g, "");
+    // ======================
+    // Máscara automática 0,00
+    // ======================
+    campoValor.addEventListener("input", function (e) {
 
-    value = (parseInt(value || 0, 10) / 100).toFixed(2);
+        let value = e.target.value.replace(/\D/g, "");
+        value = (parseInt(value || 0, 10) / 100).toFixed(2);
+        value = value.replace(".", ",");
+        e.target.value = value;
+    });
 
-    value = value.replace(".", ",");
-
-    e.target.value = value;
 });
 
-// ==============================
+// ======================
 // GERAR PIX
-// ==============================
+// ======================
 async function gerarPix() {
 
     const nome = document.getElementById("nome").value.trim();
@@ -28,9 +29,7 @@ async function gerarPix() {
         return;
     }
 
-    const valorNumerico = parseFloat(
-        valorInput.replace(",", ".")
-    );
+    const valorNumerico = parseFloat(valorInput.replace(",", "."));
 
     try {
 
@@ -55,17 +54,19 @@ async function gerarPix() {
 
         document.getElementById("qrImage").src = data.qrBase64;
         document.getElementById("pixCode").value = data.qrCode;
+        document.getElementById("qrSection").style.display = "block";
 
         verificarStatus(data.paymentId);
 
     } catch (error) {
-        alert("Erro na requisição");
+        console.error(error);
+        alert("Erro ao comunicar com servidor");
     }
 }
 
-// ==============================
+// ======================
 // VERIFICAR STATUS
-// ==============================
+// ======================
 function verificarStatus(paymentId) {
 
     const intervalo = setInterval(async () => {
@@ -74,26 +75,18 @@ function verificarStatus(paymentId) {
         const data = await response.json();
 
         if (data.status === "approved") {
+
             clearInterval(intervalo);
-            mostrarAprovado();
+
+            document.getElementById("container").innerHTML = `
+                <div class="success">
+                    PAGAMENTO APROVADO ✅
+                    <p style="margin-top:10px;color:#888;">
+                        Transação confirmada com sucesso.
+                    </p>
+                </div>
+            `;
         }
 
     }, 3000);
-}
-
-// ==============================
-// TELA APROVADO
-// ==============================
-function mostrarAprovado() {
-
-    const container = document.getElementById("container");
-
-    container.innerHTML = `
-        <div style="text-align:center;">
-            <h2 style="color:#00ff88; font-size:28px;">
-                PAGAMENTO APROVADO ✅
-            </h2>
-            <p style="color:#fff;">Seu pagamento foi confirmado com sucesso.</p>
-        </div>
-    `;
 }
