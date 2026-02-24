@@ -1,66 +1,118 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KSPAY - Pagamento</title>
-    <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UNLOCKHUB SERVE</title>
+
+<style>
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: radial-gradient(circle at top, #2a0000, #000);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+.card {
+    background: #111;
+    padding: 30px;
+    width: 350px;
+    border-radius: 15px;
+    box-shadow: 0 0 30px rgba(255,0,0,0.4);
+    text-align: center;
+}
+
+h1 {
+    color: white;
+    margin-bottom: 5px;
+}
+
+h1 span {
+    color: red;
+}
+
+p {
+    color: #aaa;
+    font-size: 14px;
+}
+
+input {
+    width: 100%;
+    padding: 10px;
+    margin-top: 10px;
+    border-radius: 8px;
+    border: none;
+    background: #222;
+    color: white;
+}
+
+button {
+    width: 100%;
+    padding: 12px;
+    margin-top: 15px;
+    border-radius: 8px;
+    border: none;
+    background: red;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+button:hover {
+    opacity: 0.8;
+}
+
+.hidden {
+    display: none;
+}
+
+textarea {
+    width: 100%;
+    margin-top: 10px;
+    height: 70px;
+    background: #222;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 8px;
+    resize: none;
+}
+</style>
 </head>
+
 <body>
 
 <div class="card">
 
-    <h1>KSPAY <span>PIX</span></h1>
-    <p class="subtitle">Pagamento rápido e seguro</p>
+<h1>UNLOCKHUB <span>SERVE</span></h1>
+<p>Pagamento rápido e seguro</p>
 
-    <!-- FORMULÁRIO -->
-    <form id="formPagamento">
+<form id="formPagamento">
+<input id="nome" placeholder="Seu nome" required>
+<input id="whatsapp" placeholder="WhatsApp" required>
+<input id="servico" placeholder="Serviço" required>
+<input id="email" placeholder="Email" type="email" required>
+<input id="valor" placeholder="Valor" required>
+<button id="btnGerar">Gerar Pix</button>
+</form>
 
-        <input type="text" id="nome" placeholder="Seu nome" required>
-
-        <input type="text" id="whatsapp" placeholder="WhatsApp" required
-               oninput="this.value = this.value.replace(/[^0-9]/g,'')">
-
-        <input type="text" id="servico" placeholder="Serviço" required>
-
-        <input type="email" id="email" placeholder="E-mail" required>
-
-        <input type="text" id="valor" placeholder="Valor (ex: 50.00)" required
-               oninput="this.value = this.value.replace(/[^0-9.]/g,'')">
-
-        <button type="submit" id="btnGerar">Gerar Pix</button>
-
-        <div class="secure">
-            🔒 Ambiente 100% seguro
-        </div>
-
-    </form>
-
-    <!-- ÁREA PIX -->
-    <div id="pixArea" class="hidden">
-
-        <h2 style="color:white;margin-bottom:15px;">Escaneie o QR Code</h2>
-
-        <div id="qrWrap" style="margin-bottom:20px;"></div>
-
-        <textarea id="pixCode"
-                  style="width:100%;padding:10px;border-radius:10px;background:#111;color:white;border:1px solid #333;"
-                  rows="4" readonly></textarea>
-
-        <button onclick="copiarPix()" style="margin-top:10px;">
-            Copiar código PIX
-        </button>
-
-        <button onclick="novoPix()"
-                style="margin-top:10px;background:#222;border:1px solid #ff0000;">
-            Gerar Novo Pix
-        </button>
-
-    </div>
+<div id="pixArea" class="hidden">
+<h3 style="color:white;">Escaneie o QR Code</h3>
+<div id="qrWrap"></div>
+<textarea id="pixCode" readonly></textarea>
+<button onclick="copiarPix()">Copiar código PIX</button>
+<button onclick="novoPix()" style="background:#333;">Gerar Novo Pix</button>
+</div>
 
 </div>
 
 <script>
+
+let paymentIdGlobal = null;
+let intervalStatus = null;
 
 const form = document.getElementById("formPagamento");
 const btnGerar = document.getElementById("btnGerar");
@@ -90,41 +142,69 @@ form.addEventListener("submit", async function (e) {
             body: JSON.stringify(dados)
         });
 
-        if (!response.ok) {
-            throw new Error("Erro na resposta do servidor");
-        }
-
         const data = await response.json();
 
-        console.log("RESPOSTA API:", data);
+        if (!data.ok) throw new Error(data.error);
 
-        const qrBase64 = data.qrBase64 || data.qr || null;
-        const qrCode = data.qrCode || data.copiaecola || data.pixCode || null;
+        paymentIdGlobal = data.paymentId;
 
-        if (!qrBase64 && !qrCode) {
-            throw new Error("Resposta inválida da API");
-        }
-
-        // Mostra área PIX
         form.classList.add("hidden");
         pixArea.classList.remove("hidden");
 
-        if (qrBase64) {
+        if (data.qrBase64) {
             document.getElementById("qrWrap").innerHTML =
-                `<img src="data:image/png;base64,${qrBase64}" alt="QR Code" style="width:220px;">`;
+                `<img src="data:image/png;base64,${data.qrBase64}" style="width:220px;">`;
         }
 
-        if (qrCode) {
-            document.getElementById("pixCode").value = qrCode;
+        if (data.qrCode) {
+            document.getElementById("pixCode").value = data.qrCode;
         }
+
+        iniciarVerificacao();
 
     } catch (err) {
-        console.error(err);
         alert("Erro ao gerar PIX. Tente novamente.");
         btnGerar.disabled = false;
         btnGerar.textContent = "Gerar Pix";
     }
 });
+
+function iniciarVerificacao() {
+
+    intervalStatus = setInterval(async () => {
+
+        if (!paymentIdGlobal) return;
+
+        try {
+
+            const response = await fetch(`/api/status?paymentId=${paymentIdGlobal}`);
+            const data = await response.json();
+
+            if (data.status === "approved") {
+                clearInterval(intervalStatus);
+                mostrarAprovado();
+            }
+
+        } catch (err) {
+            console.log("Erro verificando status");
+        }
+
+    }, 5000);
+}
+
+function mostrarAprovado() {
+
+    pixArea.innerHTML = `
+        <div style="text-align:center; animation: pop .4s ease;">
+            <h2 style="color:#00ff88; font-size:28px;">
+                PAGAMENTO APROVADO ✅
+            </h2>
+            <p style="color:white; margin-top:10px;">
+                Seu pagamento foi confirmado com sucesso.
+            </p>
+        </div>
+    `;
+}
 
 function copiarPix() {
     const codigo = document.getElementById("pixCode");
@@ -134,6 +214,7 @@ function copiarPix() {
 }
 
 function novoPix() {
+    clearInterval(intervalStatus);
     pixArea.classList.add("hidden");
     form.classList.remove("hidden");
     form.reset();
@@ -142,6 +223,13 @@ function novoPix() {
 }
 
 </script>
+
+<style>
+@keyframes pop {
+    0% { transform: scale(.8); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+}
+</style>
 
 </body>
 </html>
